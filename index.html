@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0c09">
+  <meta name="description" content="SIGNAL — estação de rádio no navegador para aprender, transmitir e decodificar código Morse.">
+  <title>SIGNAL — Morse Trainer</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body data-mode="free" data-effects="full" data-table="on">
+
+  <div class="boot" id="boot" hidden>
+    <div class="boot-inner">
+      <div class="boot-logo">SIGNAL</div>
+      <div class="boot-sub">MORSE TRAINER · TYPE 43-B</div>
+      <ol class="boot-log" id="bootLog"></ol>
+      <div class="boot-bar"><span id="bootBar"></span></div>
+      <p class="boot-skip">clique ou pressione qualquer tecla para pular</p>
+    </div>
+  </div>
+
+  <div class="file-warning" id="fileWarning" hidden>
+    <strong>O equipamento não ligou.</strong>
+    <p>Navegadores bloqueiam módulos JavaScript abertos direto do disco (<code>file://</code>).
+      Rode um servidor local na pasta do projeto, por exemplo <code>python3 -m http.server 8000</code>,
+      e acesse <code>http://localhost:8000</code>.</p>
+  </div>
+
+  <div class="rack">
+
+    <header class="plate plate-top">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="17" />
+          <path d="M9 20h4M16 20h12M31 20h1" />
+        </svg>
+        <div>
+          <h1 class="brand-name">SIGNAL</h1>
+          <p class="brand-sub">MORSE TRAINER · TYPE 43-B</p>
+        </div>
+      </div>
+
+      <div class="status-window" id="statusWindow">
+        <span class="led led-power is-on" aria-hidden="true"></span>
+        <span class="led led-tx" id="ledTx" aria-hidden="true"></span>
+        <span class="status-text" id="statusText">SIGNAL READY</span>
+      </div>
+
+      <nav class="mode-switch" aria-label="Modo de operação">
+        <button type="button" class="mode-btn" data-mode="free" aria-pressed="true">
+          <span class="mode-led" aria-hidden="true"></span>
+          <span class="mode-name">LIVRE</span>
+          <small>FREE TRANSMISSION</small>
+        </button>
+        <button type="button" class="mode-btn" data-mode="tx" aria-pressed="false">
+          <span class="mode-led" aria-hidden="true"></span>
+          <span class="mode-name">TREINO TX</span>
+          <small>TRANSMISSION TRAINING</small>
+        </button>
+        <button type="button" class="mode-btn" data-mode="rx" aria-pressed="false">
+          <span class="mode-led" aria-hidden="true"></span>
+          <span class="mode-name">RECEPÇÃO</span>
+          <small>RECEIVE TRAINING</small>
+        </button>
+      </nav>
+
+      <div class="top-tools">
+        <button type="button" class="tool-btn" id="btnTable" aria-pressed="true">TABELA</button>
+        <button type="button" class="tool-btn" id="btnSettings" aria-expanded="false" aria-controls="settings">AJUSTES</button>
+      </div>
+    </header>
+
+    <main class="console">
+
+      <section class="unit unit-crt area-crt" aria-label="Tela de transmissão">
+        <div class="bezel">
+          <span class="screw tl"></span><span class="screw tr"></span>
+          <span class="screw bl"></span><span class="screw br"></span>
+          <div class="crt" id="crt">
+            <div class="crt-head">
+              <span>CH-01</span>
+              <span data-screen="speed">12 WPM</span>
+              <span data-screen="profile">INICIANTE</span>
+              <span class="crt-state" data-screen="state">CHANNEL OPEN</span>
+            </div>
+
+            <canvas class="trace" data-screen="trace" aria-hidden="true"></canvas>
+
+            <div class="seq-row">
+              <span class="crt-label">SEQ</span>
+              <div class="seq" data-screen="seq" aria-hidden="true"></div>
+              <div class="preview" data-screen="preview" aria-hidden="true">
+                <span class="preview-char" data-screen="preview-char"></span>
+                <span class="preview-tag" data-screen="preview-tag"></span>
+              </div>
+            </div>
+
+            <div class="meter" data-screen="meter" data-mode="idle" aria-hidden="true">
+              <div class="meter-track"><div class="meter-fill" data-screen="meter-fill"></div></div>
+              <span class="meter-mark" data-screen="mark-a" hidden><i></i></span>
+              <span class="meter-mark" data-screen="mark-b" hidden><i></i></span>
+            </div>
+
+            <div class="msg-row">
+              <span class="crt-label" data-screen="msg-label">MSG</span>
+              <div class="msg" data-screen="msg"><span data-screen="msg-text"></span><span class="cursor" aria-hidden="true"></span></div>
+            </div>
+
+            <div class="crt-fx" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="sr-only" id="announcer" aria-live="polite"></div>
+      </section>
+
+      <section class="unit unit-key area-key" aria-label="Chave telegráfica">
+        <div class="deck-controls" role="group" aria-label="Controles de transmissão">
+          <button type="button" class="deck-btn" id="btnUndoSignal" title="Apaga o último ponto ou traço da letra em construção">⌫ SINAL</button>
+          <button type="button" class="deck-btn" id="btnUndoChar" title="Apaga o último caractere confirmado">⌫ LETRA</button>
+          <button type="button" class="deck-btn" id="btnClear" title="Limpa a mensagem">LIMPAR</button>
+          <button type="button" class="deck-btn" id="btnReset" title="Reinicia a transmissão e a calibragem">REINICIAR</button>
+          <button type="button" class="deck-btn only-free" id="btnCopy" title="Copia a mensagem decodificada">COPIAR</button>
+        </div>
+
+        <div class="key-wrap">
+          <button type="button" class="telegraph-key" id="key" aria-pressed="false"
+            aria-label="Chave telegráfica. Pressione e segure para transmitir. Atalho: barra de espaço.">
+            <svg class="key-svg" viewBox="0 0 420 196" aria-hidden="true" focusable="false">
+              <defs>
+                <linearGradient id="gBaseTop" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#3c4334" />
+                  <stop offset="1" stop-color="#252a20" />
+                </linearGradient>
+                <linearGradient id="gBaseFront" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#20241c" />
+                  <stop offset="1" stop-color="#0c0e0a" />
+                </linearGradient>
+                <linearGradient id="gBrass" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#5e4a1e" />
+                  <stop offset=".42" stop-color="#d6b765" />
+                  <stop offset=".6" stop-color="#b08b3c" />
+                  <stop offset="1" stop-color="#4f3c15" />
+                </linearGradient>
+                <linearGradient id="gArm" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#e6cf86" />
+                  <stop offset=".45" stop-color="#a98539" />
+                  <stop offset="1" stop-color="#543f15" />
+                </linearGradient>
+                <linearGradient id="gSteel" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#555a51" />
+                  <stop offset=".5" stop-color="#cdd3c6" />
+                  <stop offset="1" stop-color="#43483f" />
+                </linearGradient>
+                <linearGradient id="gKnob" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#3b3b38" />
+                  <stop offset=".35" stop-color="#1a1a19" />
+                  <stop offset="1" stop-color="#050505" />
+                </linearGradient>
+                <radialGradient id="gKnobTop" cx=".4" cy=".35" r=".7">
+                  <stop offset="0" stop-color="#5a5a55" />
+                  <stop offset="1" stop-color="#151514" />
+                </radialGradient>
+                <radialGradient id="gSpark">
+                  <stop offset="0" stop-color="#fff7d6" />
+                  <stop offset=".35" stop-color="#ffc35c" stop-opacity=".85" />
+                  <stop offset="1" stop-color="#ff8a00" stop-opacity="0" />
+                </radialGradient>
+              </defs>
+
+              <ellipse cx="210" cy="184" rx="196" ry="9" fill="#000" opacity=".55" />
+
+              <path d="M28 160 C 6 160, 2 140, 0 120" class="wire" />
+              <path d="M392 160 C 414 160, 418 140, 420 120" class="wire" />
+
+              <path d="M36 128 H384 L404 148 H16 Z" fill="url(#gBaseTop)" />
+              <rect x="16" y="148" width="388" height="28" rx="3" fill="url(#gBaseFront)" />
+              <path d="M16 148.5 H404" stroke="#59634b" stroke-width="1" />
+              <g class="screw-head">
+                <circle cx="34" cy="162" r="5" fill="url(#gSteel)" />
+                <path d="M31 160 L37 164" stroke="#2a2d27" stroke-width="1.4" />
+                <circle cx="386" cy="162" r="5" fill="url(#gSteel)" />
+                <path d="M383 164 L389 160" stroke="#2a2d27" stroke-width="1.4" />
+              </g>
+              <text x="210" y="166.5" class="key-plate">SIGNAL · KEY J-43</text>
+
+              <g>
+                <rect x="24" y="112" width="14" height="18" rx="2" fill="url(#gBrass)" />
+                <rect x="21" y="108" width="20" height="6" rx="2" fill="url(#gBrass)" />
+                <rect x="382" y="112" width="14" height="18" rx="2" fill="url(#gBrass)" />
+                <rect x="379" y="108" width="20" height="6" rx="2" fill="url(#gBrass)" />
+              </g>
+
+              <rect x="143" y="114" width="14" height="16" rx="1.5" fill="url(#gSteel)" />
+              <rect x="146" y="109" width="8" height="6" rx="1" fill="#dfe3d6" />
+
+              <g class="key-spring">
+                <path d="M222 127 l-9 -3 l18 -4 l-18 -4 l18 -4 l-18 -4 l9 -3" />
+              </g>
+
+              <path d="M264 130 V86 Q264 76 274 76 H290 Q300 76 300 86 V130 Z" fill="url(#gBrass)" />
+              <rect x="352" y="70" width="10" height="60" fill="url(#gSteel)" />
+              <rect x="344" y="62" width="26" height="10" rx="2.5" fill="url(#gBrass)" />
+
+              <ellipse class="key-spark" cx="150" cy="107" rx="18" ry="11" fill="url(#gSpark)" />
+
+              <g class="key-lever">
+                <rect x="66" y="90" width="300" height="12" rx="4" fill="url(#gArm)" />
+                <path d="M70 91.5 H362" stroke="#f6e3a6" stroke-width="1" opacity=".55" />
+                <rect x="146" y="102" width="8" height="4" rx="1" fill="#dfe3d6" />
+                <circle cx="282" cy="96" r="9" fill="url(#gSteel)" />
+                <circle cx="282" cy="96" r="3.2" fill="#262923" />
+
+                <rect x="92" y="76" width="10" height="16" fill="url(#gSteel)" />
+                <ellipse cx="97" cy="79" rx="40" ry="6" fill="#050505" />
+                <rect x="55" y="52" width="84" height="27" rx="7" fill="url(#gKnob)" />
+                <ellipse cx="97" cy="53" rx="42" ry="8" fill="url(#gKnobTop)" />
+                <ellipse cx="86" cy="51" rx="18" ry="2.6" fill="#fff" opacity=".12" />
+              </g>
+            </svg>
+          </button>
+          <p class="key-hint">SEGURE A CHAVE · BARRA DE ESPAÇO · TOQUE</p>
+        </div>
+
+        <div class="deck-side">
+          <div class="lamp-housing">
+            <span class="lamp" id="lamp" aria-hidden="true"></span>
+            <span class="plate-label">TX / RX</span>
+          </div>
+          <div class="readout" aria-label="Velocidade">
+            <button type="button" class="nudge" id="wpmDown" aria-label="Diminuir velocidade">−</button>
+            <span class="readout-value"><span id="wpmReadout">12</span><small>WPM</small></span>
+            <button type="button" class="nudge" id="wpmUp" aria-label="Aumentar velocidade">+</button>
+          </div>
+          <button type="button" class="profile-toggle" id="profileToggle" title="Alterna entre modo iniciante e realista">
+            <small>MODO</small><span id="profileReadout">INICIANTE</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="unit unit-mode area-mode" aria-label="Painel de treinamento">
+
+        <div class="panel" id="txPanel" hidden>
+          <div class="panel-head">
+            <h2>TRANSMISSION TRAINING</h2>
+            <div class="level-switch" role="radiogroup" aria-label="Nível de dificuldade" data-tx="levels">
+              <button type="button" role="radio" data-level="beginner">INICIANTE</button>
+              <button type="button" role="radio" data-level="intermediate">INTERMEDIÁRIO</button>
+              <button type="button" role="radio" data-level="advanced">AVANÇADO</button>
+            </div>
+          </div>
+
+          <div class="stage-bar" data-tx="stage">
+            <button type="button" class="stage-nav" data-dir="-1" aria-label="Etapa anterior">◂</button>
+            <div class="stage-info">
+              <span class="stage-name" data-stage="name"></span>
+              <span class="stage-pips" data-stage="pips"></span>
+            </div>
+            <button type="button" class="stage-nav" data-dir="1" aria-label="Próxima etapa">▸</button>
+          </div>
+
+          <div class="challenge">
+            <span class="challenge-label">TRANSMITA</span>
+            <div class="challenge-target" data-tx="target" aria-live="polite"></div>
+            <div class="challenge-hint" data-tx="hint"></div>
+          </div>
+
+          <div class="feedback" data-tx="feedback" aria-live="polite"></div>
+
+          <div class="panel-actions">
+            <button type="button" class="deck-btn" data-tx="listen">▶ OUVIR</button>
+            <button type="button" class="deck-btn" data-tx="hint-btn" aria-pressed="false">DICA</button>
+            <button type="button" class="deck-btn" data-tx="skip">PULAR ▸</button>
+          </div>
+
+          <dl class="scoreboard" data-tx="score"></dl>
+        </div>
+
+        <div class="panel" id="rxPanel" hidden>
+          <div class="panel-head">
+            <h2>RECEIVE TRAINING</h2>
+            <div class="level-switch" role="radiogroup" aria-label="Nível de dificuldade" data-rx="levels">
+              <button type="button" role="radio" data-level="beginner">INICIANTE</button>
+              <button type="button" role="radio" data-level="intermediate">INTERMEDIÁRIO</button>
+              <button type="button" role="radio" data-level="advanced">AVANÇADO</button>
+            </div>
+          </div>
+
+          <div class="stage-bar" data-rx="stage">
+            <button type="button" class="stage-nav" data-dir="-1" aria-label="Etapa anterior">◂</button>
+            <div class="stage-info">
+              <span class="stage-name" data-stage="name"></span>
+              <span class="stage-pips" data-stage="pips"></span>
+            </div>
+            <button type="button" class="stage-nav" data-dir="1" aria-label="Próxima etapa">▸</button>
+          </div>
+
+          <div class="challenge rx-receiver">
+            <span class="rx-lamp" data-rx="lamp" aria-hidden="true"></span>
+            <span class="rx-state" data-rx="state" aria-live="polite">AGUARDANDO SINAL</span>
+          </div>
+
+          <form class="rx-form" data-rx="form" autocomplete="off">
+            <label for="rxInput">SUA LEITURA</label>
+            <div class="rx-input-row">
+              <input id="rxInput" data-rx="input" type="text" maxlength="16" spellcheck="false"
+                autocapitalize="characters" autocorrect="off" enterkeyhint="send" placeholder="_ _ _">
+              <button type="submit" class="deck-btn is-primary" data-rx="submit">VERIFICAR</button>
+            </div>
+          </form>
+
+          <div class="feedback" data-rx="feedback" aria-live="polite"></div>
+
+          <div class="panel-actions">
+            <button type="button" class="deck-btn" data-rx="replay">▶ OUVIR <span class="badge" data-rx="replay-count">∞</span></button>
+            <button type="button" class="deck-btn" data-rx="lamp-toggle" aria-pressed="true">LUZ</button>
+            <button type="button" class="deck-btn" data-rx="skip">PULAR ▸</button>
+          </div>
+
+          <dl class="scoreboard" data-rx="score"></dl>
+        </div>
+      </section>
+
+      <aside class="unit unit-table area-table" id="tablePanel" aria-label="Tabela de referência Morse">
+        <header class="unit-head">
+          <h2>REFERÊNCIA · CÓDIGO INTERNACIONAL</h2>
+        </header>
+        <div class="demo" aria-live="off">
+          <span class="demo-char" data-table="demo-char">·</span>
+          <div class="demo-body">
+            <div class="demo-bars" data-table="demo-bars"></div>
+            <span class="demo-code" data-table="demo-code">CLIQUE EM UM CARACTERE PARA OUVIR</span>
+          </div>
+        </div>
+        <div class="morse-grid" data-table="grid"></div>
+        <p class="table-off">TABELA RECOLHIDA · use o botão TABELA no painel superior</p>
+        <p class="table-locked">TABELA BLOQUEADA · NÍVEL AVANÇADO</p>
+      </aside>
+    </main>
+
+    <footer class="plate plate-bottom">
+      <span><kbd>ESPAÇO</kbd> chave</span>
+      <span><kbd>⌫</kbd> apagar sinal</span>
+      <span><kbd>ESC</kbd> parar reprodução</span>
+      <span class="serial">SER. Nº 43-0917 · ITU-R M.1677</span>
+    </footer>
+  </div>
+
+  <div class="drawer-backdrop" id="settingsBackdrop" hidden></div>
+  <aside class="drawer" id="settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+    <header class="drawer-head">
+      <h2 id="settingsTitle">PAINEL DE AJUSTES</h2>
+      <button type="button" class="icon-btn" data-action="close" aria-label="Fechar ajustes">✕</button>
+    </header>
+
+    <div class="drawer-body">
+      <fieldset class="group">
+        <legend>OPERAÇÃO</legend>
+        <div class="segmented" role="radiogroup" aria-label="Modo de reconhecimento">
+          <label><input type="radio" name="profile" value="beginner" data-setting="profile"><span>INICIANTE</span></label>
+          <label><input type="radio" name="profile" value="realistic" data-setting="profile"><span>REALISTA</span></label>
+        </div>
+        <p class="hint" data-output="profile-hint"></p>
+
+        <div class="control">
+          <label for="setWpm">VELOCIDADE <output data-output="wpm"></output></label>
+          <input type="range" id="setWpm" min="5" max="30" step="1" data-setting="wpm">
+        </div>
+        <div class="control">
+          <label for="setTolerance">TOLERÂNCIA DE PAUSAS <output data-output="tolerance"></output></label>
+          <input type="range" id="setTolerance" min="0" max="100" step="5" data-setting="tolerance">
+        </div>
+
+        <dl class="timing-card">
+          <div><dt>1 UNIDADE</dt><dd data-output="t-unit"></dd></div>
+          <div><dt>TRAÇO</dt><dd data-output="t-dash"></dd></div>
+          <div><dt>FECHA LETRA</dt><dd data-output="t-char"></dd></div>
+          <div><dt>FECHA PALAVRA</dt><dd data-output="t-word"></dd></div>
+        </dl>
+        <p class="hint">A mesma velocidade controla a chave e a reprodução automática. Nos treinos, o nível escolhido pode deixar os tempos mais folgados ou mais rígidos.</p>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>ÁUDIO</legend>
+        <label class="toggle">
+          <input type="checkbox" data-setting="audio">
+          <span class="toggle-track"><span class="toggle-lever"></span></span>
+          <span>SOM ATIVADO</span>
+        </label>
+        <div class="control" data-requires="audio">
+          <label for="setFreq">FREQUÊNCIA DO TOM <output data-output="frequency"></output></label>
+          <input type="range" id="setFreq" min="400" max="1000" step="10" data-setting="frequency">
+        </div>
+        <div class="control" data-requires="audio">
+          <label for="setVolume">VOLUME <output data-output="volume"></output></label>
+          <input type="range" id="setVolume" min="0" max="100" step="1" data-setting="volume">
+        </div>
+        <button type="button" class="deck-btn" data-action="radio-check">RADIO CHECK ▶ VVV</button>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>VISUAL</legend>
+        <div class="segmented" role="radiogroup" aria-label="Efeitos visuais">
+          <label><input type="radio" name="effects" value="full" data-setting="effects"><span>COMPLETO</span></label>
+          <label><input type="radio" name="effects" value="reduced" data-setting="effects"><span>REDUZIDO</span></label>
+          <label><input type="radio" name="effects" value="off" data-setting="effects"><span>DESLIGADO</span></label>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" data-setting="showTable">
+          <span class="toggle-track"><span class="toggle-lever"></span></span>
+          <span>EXIBIR TABELA DE REFERÊNCIA</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" data-setting="rxLamp">
+          <span class="toggle-track"><span class="toggle-lever"></span></span>
+          <span>LUZ DE TRANSMISSÃO NA RECEPÇÃO</span>
+        </label>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>REGISTRO</legend>
+        <pre class="stats-summary" data-output="stats"></pre>
+        <button type="button" class="deck-btn is-danger" data-action="reset-stats">ZERAR ESTATÍSTICAS</button>
+      </fieldset>
+    </div>
+  </aside>
+
+  <script>
+    setTimeout(function () {
+      if (!document.documentElement.dataset.ready) {
+        document.getElementById('fileWarning').hidden = false;
+      }
+    }, 1500);
+  </script>
+</body>
+</html>
